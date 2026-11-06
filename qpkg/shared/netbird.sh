@@ -59,7 +59,7 @@ nb_timeout_prefix() {
 
 setup_webui() {
     # QTS serves the application path from this web root, which may be rebuilt on reboot.
-    _web_link=/home/Qhttpd/Web/netbird
+    _web_link=/home/httpd/netbird
     if [ -L "$_web_link" ]; then
         if [ "$(readlink "$_web_link")" != "${QPKG_ROOT}/web" ]; then
             rm -f "$_web_link" && ln -s "${QPKG_ROOT}/web" "$_web_link"
@@ -147,7 +147,7 @@ teardown_webui() {
 
     # Remove CGI symlink and stale web root symlinks
     rm -f /home/httpd/cgi-bin/netbird-api.cgi
-    rm -f /home/Qhttpd/Web/netbird 2>/dev/null
+    rm -f /home/httpd/netbird 2>/dev/null
 }
 
 # run_netbird_up builds the argv from netbird.conf and runs 'netbird up'.

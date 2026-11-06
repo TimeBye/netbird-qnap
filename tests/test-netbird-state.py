@@ -155,7 +155,8 @@ class StateTests(unittest.TestCase):
         link = self.base / 'qts-web/netbird'
         link.parent.mkdir()
         setup = SERVICE.read_text().split('setup_webui() {\n', 1)[1].split('    # Drop-in proxy config', 1)[0]
-        setup = setup.replace('_web_link=/home/Qhttpd/Web/netbird',
+        self.assertIn('_web_link=/home/httpd/netbird', setup)
+        setup = setup.replace('_web_link=/home/httpd/netbird',
                               '_web_link=' + shlex.quote(str(link)))
         script = 'log() { :; }\nsetup_webui() {\n' + setup + '}\nsetup_webui\n'
 
