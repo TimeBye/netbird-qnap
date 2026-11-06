@@ -58,6 +58,23 @@ nb_timeout_prefix() {
 }
 
 setup_webui() {
+    # QTS serves the application path from this web root, which may be rebuilt on reboot.
+    _web_link=/home/Qhttpd/Web/netbird
+    if [ -L "$_web_link" ]; then
+        if [ "$(readlink "$_web_link")" != "${QPKG_ROOT}/web" ]; then
+            rm -f "$_web_link" && ln -s "${QPKG_ROOT}/web" "$_web_link"
+        fi
+    elif [ ! -e "$_web_link" ]; then
+        ln -s "${QPKG_ROOT}/web" "$_web_link"
+    else
+        log "WARNING: Web UI path is not a symlink: $_web_link"
+    fi
+    if [ -L "$_web_link" ] && [ "$(readlink "$_web_link")" = "${QPKG_ROOT}/web" ]; then
+        log "Web UI symlink OK"
+    else
+        log "WARNING: Web UI symlink unavailable: $_web_link"
+    fi
+
     # Drop-in proxy config (WordPress containerized QPKG pattern)
     # /etc/container-proxy.d/ is auto-included by QTS Apache
     _proxy_dir="/etc/container-proxy.d"

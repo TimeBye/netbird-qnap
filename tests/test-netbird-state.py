@@ -149,6 +149,43 @@ class StateTests(unittest.TestCase):
         self.run_shell()
         self.assertEqual(os.readlink(self.state), str(self.target))
 
+    def test_webui_link_recreated_after_reboot(self):
+        web = self.install / 'web'
+        web.mkdir()
+        link = self.base / 'qts-web/netbird'
+        link.parent.mkdir()
+        setup = SERVICE.read_text().split('setup_webui() {\n', 1)[1].split('    # Drop-in proxy config', 1)[0]
+        setup = setup.replace('_web_link=/home/Qhttpd/Web/netbird',
+                              '_web_link=' + shlex.quote(str(link)))
+        script = 'log() { :; }\nsetup_webui() {\n' + setup + '}\nsetup_webui\n'
+
+        for _ in range(2):
+            result = subprocess.run(['sh', '-c', script], env=self.env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(link.resolve(), web.resolve(), (result.stdout, result.stderr))
+            self.assertEqual(os.readlink(link), str(web))
+            link.unlink()  # QTS web root may lose package links during reboot.
+
+        result = subprocess.run(['sh', '-c', script], env=self.env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(os.readlink(link), str(web))
+        result = subprocess.run(['sh', '-c', script], env=self.env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(os.readlink(link), str(web))
+
+        link.unlink()
+        link.symlink_to(self.base / 'old install/web')
+        result = subprocess.run(['sh', '-c', script], env=self.env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(os.readlink(link), str(web))
+        link.unlink()
+
+        link.mkdir()
+        result = subprocess.run(['sh', '-c', script], env=self.env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(link.is_dir())
+        self.assertFalse(link.is_symlink())
+
     def test_service_guards(self):
         # Use the real startup function, replacing only the platform config command; failures must return before service side effects.
         text = SERVICE.read_text()
