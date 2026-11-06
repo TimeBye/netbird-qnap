@@ -45,7 +45,6 @@ pkg_post_install() {
     done
 
     chmod 666 "$NETBIRD_CONF" 2>/dev/null
-    mkdir -p /etc/netbird 2>/dev/null
     /sbin/log_tool -t1 -uSystem -p127.0.0.1 -mlocalhost -a "Netbird VPN QPKG installed"
 }
 

@@ -8,6 +8,7 @@ QPKG_ROOT=$(/sbin/getcfg $QPKG_NAME Install_Path -f ${CONF})
 NETBIRD_BIN="${QPKG_ROOT}/netbird"
 NETBIRD_CONF="${QPKG_ROOT}/netbird.conf"
 NETBIRD_COMMON="${QPKG_ROOT}/netbird-common.sh"
+NETBIRD_STATE="${QPKG_ROOT}/netbird-state.sh"
 LAST_ERROR="${QPKG_ROOT}/last-error"
 PIDF="/var/run/netbird.pid"
 SVCLOG="/var/log/netbird-service.log"
@@ -207,7 +208,28 @@ start_service() {
     _log_file="${NBQ_LOG_FILE:-/var/log/netbird.log}"
     _log_level="${NBQ_LOG_LEVEL:-info}"
 
-    mkdir -p /etc/netbird 2>/dev/null
+    # Do not copy identity state while the daemon is writing to it, even if the PID file is missing.
+    if ! command -v pidof >/dev/null 2>&1; then
+        record_error "Cannot verify daemon is stopped: pidof is unavailable."
+        log "ABORT: pidof is unavailable"
+        return 1
+    fi
+    if pidof netbird >/dev/null 2>&1; then
+        record_error "Netbird is running without a valid PID file; stop it before starting."
+        log "ABORT: netbird process exists; refusing state migration"
+        return 1
+    fi
+    if [ ! -f "$NETBIRD_STATE" ]; then
+        record_error "State helper not found: $NETBIRD_STATE"
+        log "ABORT: missing state helper"
+        return 1
+    fi
+    . "$NETBIRD_STATE"
+    if ! nb_prepare_state >> "$SVCLOG" 2>&1; then
+        record_error "State migration failed; original identity retained. Check $SVCLOG."
+        log "ABORT: state migration failed"
+        return 1
+    fi
     ln -sf "$NETBIRD_BIN" /usr/local/bin/netbird 2>/dev/null
 
     # Clean stale config from previous versions
